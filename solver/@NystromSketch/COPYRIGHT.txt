@@ -1,0 +1,20 @@
+Nys-SKETCHv1.0
+Copyright (C) 2017 Laboratory for Information and Inference Systems (LIONS)
+		    Ecole Polytechnique Federale de Lausanne, Switzerland.
+
+Nys-SKETCH implements a class definition for the single-view methods considered in [TYUC2017N] for the fixed-rank approximation of a positive-semidefinite matrix from streaming data.
+
+Nys-SKETCH is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, version 3 of the License.
+
+Nys-SKETCH is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+
+[TYUC2017N] J.A. Tropp, A. Yurtsever, M. Udell and V. Cevher. Fixed-Rank Approximation of a Positive-Semidefinite Matrix from Streaming Data. In Proc. 31st Conference on Neural Information Processing Systems (NIPS), Long Beach, CA, USA, December 2017.
