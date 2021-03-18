@@ -1,4 +1,4 @@
-%%  Test setup for MaxCut SDP - Solved with SketchyCGAL
+%% Test setup for Primal Dual Convergence (MaxCut SDP) - Solved with SketchyCGAL
 %% Alp Yurtsever (alp.yurtsever@epfl.ch - alpy@mit.edu)
 
 %% Choose data
@@ -29,24 +29,12 @@ clearvars Problem;
 Primitive1 = @(x) C*x;
 Primitive2 = @(y,x) y.*x;
 Primitive3 = @(x) sum(x.^2,2);
-a = n;
+a = [0,1.05*n];
 b = ones(n,1);
 
 % Compute scaling factors
 SCALE_X = 1/n;
 SCALE_C = 1/norm(C,'fro');
-
-%% Implement rounding
-
-err{1} = 'cutvalue'; % name for error
-err{2} = @(u) round(C,u); % function definition at the bottom of this script
-
-%% Start memory logging
-% NOTE: This works only on Unix systems. 
-
-hmL = memLog([mfilename,'_',maxcut_data]);
-hmL.start;
-MEMBEGIN = hmL.prompt;
 
 %% Solve using SketchyCGAL
 
@@ -60,11 +48,10 @@ cputimeBegin = cputime;
 
 [out, U, D, y, AX, pobj] = CGAL( n, Primitive1, Primitive2, Primitive3, a, b, R, maxit, beta0, K, ...
     'FLAG_MULTRANK_P1',true,... % This flag informs that Primitive1 can be applied to find AUU' for any size U. 
-    'FLAG_MULTRANK_P3',true,... % This flag informs that Primitive3 can be applied to find (A'y)U for any size U.
+    'FLAG_MULTRANK_P3',true,... % This flag informs that Primitive1 can be applied to find (A'y)U for any size U.
     'SCALE_X',SCALE_X,... % SCALE_X prescales the primal variable X of the problem
     'SCALE_C',SCALE_C,... % SCALE_C prescales the cost matrix C of the problem
-    'errfncs',err,... % err defines the spectral rounding for maxcut
-    'stoptol',0.1); % algorithm stops when 1e-1 relative accuracy is achieved
+    'stoptol',1e-3); % algorithm stops when 1e-3 accuracy is achieved
                      
 cputimeEnd = cputime;
 totalTime = toc(timer);
@@ -72,35 +59,31 @@ totalTime = toc(timer);
 out.totalTime = totalTime;
 out.totalCpuTime = cputimeEnd - cputimeBegin;
 
-%% Stop memory logging
-
-MEMEND = hmL.prompt;
-hmL.stop;
-out.memory = (MEMEND - MEMBEGIN)/1000; %in MB
-
 %% Evaluate errors
 
-out.cutvalue = out.info.cutvalue(end);
-out.primalObj = out.info.primalObj(end);
-out.primalFeas = out.info.primalFeas(end);
+dobj = b'*y;
+Z = C+diag(y);
+out.dimacs.err1 = norm(AX-b)/(1+norm(b));
+out.dimacs.err2 = 0; % this is theoretically 0 for CGAL
+out.dimacs.err3 = 0; % this is theoretically 0 for CGAL
+out.dimacs.err4 = max(-min(eig(Z)),0)/(1+norm(C,'fro'));
+out.dimacs.err5 = (pobj+dobj)/(1+abs(pobj)+abs(dobj));
+out.dimacs.err6 = (pobj + y'*AX)/(1+abs(pobj)+abs(dobj));
 
-%% Save results
-
-if ~exist(['results/MaxCut/',maxcut_data],'dir'), mkdir(['results/MaxCut/',maxcut_data]); end
-save(['results/MaxCut/',maxcut_data,'/SketchyCGAL.mat'],'out','-v7.3');
-
-%% Implement rounding
-% NOTE: Defining a function in a MATLAB script was not available in older
-% versions. If you are using an old version of MATLAB, you might need to
-% save this function as a seperate ".m" file in your path.
-
-function cutvalue = round(C,u)
 cutvalue = 0;
-for t = 1:size(u,2)
-    sign_evec = sign(u(:,t));
+for t = 1:R
+    sign_evec = sign(U(:,t));
     rankvalue = -(sign_evec'*(C*sign_evec));
     cutvalue = max(cutvalue, rankvalue);
 end
-end
+
+out.cutvalue = cutvalue;
+out.primalObj = pobj;
+out.primalFeas = norm(AX-b)/(1+norm(b));
+
+%% Save results
+
+if ~exist(['results/DualMaxCut/',maxcut_data],'dir'), mkdir(['results/DualMaxCut/',maxcut_data]); end
+save(['results/DualMaxCut/',maxcut_data,'/SketchyCGAL.mat'],'out','-v7.3');
 
 %% Last edit: Alp Yurtsever - July 24, 2020

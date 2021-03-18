@@ -1,11 +1,11 @@
-%%  Test setup for MaxCut SDP - Solved with SDPT3
+%%  Test setup for MaxCut SDP - Solved with SDPT3 (default parameters - high accuracy)
 %% Alp Yurtsever (alp.yurtsever@epfl.ch - alpy@mit.edu)
 
 %% Choose data
 % NOTE: You need to download data from GSET and locate them to under the
 % "FilesMaxCut/data/G/" folder (resp. DIMACS10, "FilesMaxCut/data/DIMACS10/").
 
-% maxcut_data = 'G/G1'; % you can choose other data files as well
+maxcut_data = 'G/G67'; % you can choose other data files as well
 % maxcut_data = 'DIMACS10/belgium_osm';
 
 %% Preamble
@@ -36,33 +36,18 @@ for k = 1:n; A{k} = sparse(k,k,1,n,n); end
 Avec = svec(blk,A,ones(size(blk,1),1));
 clearvars A;
 
-OPTIONS.gaptol = 0.1;
-
-%% Start memory logging
-% NOTE: This works only on Unix systems. 
-
-hmL = memLog([mfilename,'_',maxcut_data]);
-hmL.start;
-MEMBEGIN = hmL.prompt;
-
-%% Solve with SDPT3
+%% Solve with SDPT3 (default values solve it to high accuracy)
 
 timer = tic;
 cputimeBegin = cputime;
 
-[obj,X,y,~,info,runhist] = sdpt3(blk,Avec,C,b,OPTIONS);
+[obj,X,y,~,info,runhist] = sdpt3(blk,Avec,C,b);
 
 cputimeEnd = cputime;
 totalTime = toc(timer);
 
 out.totalTime = totalTime;
 out.totalCpuTime = cputimeEnd - cputimeBegin;
-
-%% Stop memory logging
-
-MEMEND = hmL.prompt;
-hmL.stop;
-out.memory = (MEMEND - MEMBEGIN)/1000; %in MB
 
 %% Evaluate errors
 
@@ -85,6 +70,6 @@ out.primalObj = C(:)'*X(:);
 %% Save Results
 
 if ~exist(['results/MaxCut/',maxcut_data],'dir'), mkdir(['results/MaxCut/',maxcut_data]); end
-save(['results/MaxCut/',maxcut_data,'/SDPT3.mat'],'obj','info','runhist','out','-v7.3');
+save(['results/MaxCut/',maxcut_data,'/SDPT3-GroundTruth.mat'],'obj','info','runhist','out','-v7.3');
 
 %% Last edit: Alp Yurtsever - July 24, 2020

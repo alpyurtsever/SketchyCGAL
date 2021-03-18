@@ -1,7 +1,7 @@
-%%  Test setup for MaxCut SDP - Solved with Sedumi
+%% Test setup for Primal Dual Convergence (MaxCut SDP) - Solved with SeDuMi
 %% Alp Yurtsever (alp.yurtsever@epfl.ch - alpy@mit.edu)
 
-%% Choose and load data
+%% Choose data
 % NOTE: You need to download data from GSET and locate them to under the
 % "FilesMaxCut/data/G/" folder (resp. DIMACS10, "FilesMaxCut/data/DIMACS10/").
 
@@ -48,14 +48,7 @@ b = ones(n,1);
 At = sparse(indI,indJ,valA,n^2,n);
 clearvars indI indJ valA;
 
-pars.eps = 0.1;
-
-%% Start memory logging
-% NOTE: This works only on Unix systems. 
-
-hmL = memLog([mfilename,'_',maxcut_data]);
-hmL.start;
-MEMBEGIN = hmL.prompt;
+pars.eps = 1e-3;
 
 %% Solve with SEDUMI
 
@@ -70,17 +63,21 @@ totalTime = toc(timer);
 out.totalTime = totalTime;
 out.totalCpuTime = cputimeEnd - cputimeBegin;
 
-%% Stop memory logging
-
-MEMEND = hmL.prompt;
-hmL.stop;
-out.memory = (MEMEND - MEMBEGIN)/1000; %in MB
-
 %% Evaluate errors
 
 C = reshape(C,[n,n]);
 X = reshape(X,[n,n]);
 X = 0.5*(X+X'); % sedumi does not return symmetric outputs
+Z = C - diag(y);
+
+dobj = -b'*y;
+pobj = C(:)'*X(:);
+out.dimacs.err1 = norm(diag(X)-b)/(1+norm(b));
+out.dimacs.err2 = max(-min(eig(X)),0)/(1+norm(b));
+out.dimacs.err3 = norm(diag(y)+Z-C,'fro')/(1+norm(C,'fro'));
+out.dimacs.err4 = max(-min(eig(Z)),0)/(1+norm(C,'fro'));
+out.dimacs.err5 = (pobj+dobj)/(1+abs(pobj)+abs(dobj));
+out.dimacs.err6 = (X(:)'*Z(:))/(1+abs(pobj)+abs(dobj));
 
 R = 10;
 [u,~] = eigs(X, R, 'LM');
@@ -97,7 +94,7 @@ out.primalObj = C(:)'*X(:);
 
 %% Save Results
 
-if ~exist(['results/MaxCut/',maxcut_data],'dir'), mkdir(['results/MaxCut/',maxcut_data]); end
-save(['results/MaxCut/',maxcut_data,'/SeDuMi.mat'],'info','out','-v7.3');
+if ~exist(['results/DualMaxCut/',maxcut_data],'dir'), mkdir(['results/DualMaxCut/',maxcut_data]); end
+save(['results/DualMaxCut/',maxcut_data,'/SeDuMi.mat'],'info','out','-v7.3');
 
 %% Last edit: Alp Yurtsever - July 24, 2020

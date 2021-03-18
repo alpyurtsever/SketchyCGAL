@@ -1,0 +1,1 @@
+Make a copy of "sedumi.m" in this folder, rename it as "sedumi_modified.m", and comment out the lines 638-642.

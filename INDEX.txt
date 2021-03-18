@@ -6,19 +6,26 @@ FilesPtychography/
 FilesQAP/
 INDEX.txt
 LICENSE.txt
+plotter/
 README.txt
+solver/
+Test_MaxCut_CGAL_Figure71.m
+Test_MaxCut_CGAL_FigureSM71_PD.m
+Test_MaxCut_CGAL_PD.m
 Test_MaxCut_CGAL.m
-Test_MaxCut_CGAL_Figure72.m
+Test_MaxCut_Mosek_PD.m
 Test_MaxCut_Mosek.m
+Test_MaxCut_SDPNAL_PD.m
 Test_MaxCut_SDPNAL.m
+Test_MaxCut_SDPT3_GroundTruth.m
+Test_MaxCut_SDPT3_PD.m
 Test_MaxCut_SDPT3.m
+Test_MaxCut_Sedumi_PD.m
 Test_MaxCut_Sedumi.m
 Test_MaxCut_Waldspurger.m
 Test_PhaseRetrieval.m
 Test_Ptychography.m
 Test_QAP.m
-plotter/
-solver/
 utils/
 
 ./@memLog:
@@ -26,6 +33,7 @@ memLog.m
 
 ./FilesMaxcut:
 data/
+sedumi_modified/
 
 ./FilesMaxcut/data:
 DIMACS10/
@@ -48,6 +56,9 @@ C8.mat
 C9.mat
 C10.mat
 
+./FilesMaxcut/sedumi_modified:
+README.txt
+
 ./FilesPhaseRetrieval:
 CreateData.m
 
@@ -63,30 +74,31 @@ PIXNIO-39417-2650x1770
 PIXNIO-39417-2650x1770.txt
 
 ./FilesQAP:
-PartialTrace/
 munkres/
+PartialTrace/
 qapdata/
 qapread.m
 tspdata/
 tspread.m
 
-./FilesQAP/PartialTrace:
-TrX.m
-license.txt
-
 ./FilesQAP/munkres:
 license.txt
 munkres.m
+
+./FilesQAP/PartialTrace:
+TrX.m
+license.txt
 
 ./FilesQAP/qapdata:
 
 ./FilesQAP/tspdata:
 
 ./plotter:
+Figure11_MaxCut.m
 Figure71_MaxCut.m
-Figure72_MaxCut.m
-Figure73_PhaseRetrieval.m
-Figure75_QAP.m
+Figure72_PhaseRetrieval.m
+Figure74_QAP.m
+FigureSM73_MaxCut.m
 
 ./solver:
 @NystromSketch/

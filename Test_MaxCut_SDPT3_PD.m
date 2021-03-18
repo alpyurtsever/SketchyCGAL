@@ -1,4 +1,4 @@
-%%  Test setup for MaxCut SDP - Solved with SDPT3
+%% Test setup for Primal Dual Convergence (MaxCut SDP) - Solved with SDPT3
 %% Alp Yurtsever (alp.yurtsever@epfl.ch - alpy@mit.edu)
 
 %% Choose data
@@ -36,21 +36,14 @@ for k = 1:n; A{k} = sparse(k,k,1,n,n); end
 Avec = svec(blk,A,ones(size(blk,1),1));
 clearvars A;
 
-OPTIONS.gaptol = 0.1;
-
-%% Start memory logging
-% NOTE: This works only on Unix systems. 
-
-hmL = memLog([mfilename,'_',maxcut_data]);
-hmL.start;
-MEMBEGIN = hmL.prompt;
+OPTIONS.gaptol = 1e-3;
 
 %% Solve with SDPT3
 
 timer = tic;
 cputimeBegin = cputime;
 
-[obj,X,y,~,info,runhist] = sdpt3(blk,Avec,C,b,OPTIONS);
+[obj,X,y,Z,info,runhist] = sdpt3(blk,Avec,C,b,OPTIONS);
 
 cputimeEnd = cputime;
 totalTime = toc(timer);
@@ -58,16 +51,20 @@ totalTime = toc(timer);
 out.totalTime = totalTime;
 out.totalCpuTime = cputimeEnd - cputimeBegin;
 
-%% Stop memory logging
-
-MEMEND = hmL.prompt;
-hmL.stop;
-out.memory = (MEMEND - MEMBEGIN)/1000; %in MB
-
 %% Evaluate errors
 
 X = cell2mat(X);
+Z = cell2mat(Z);
 C = cell2mat(C);
+
+dobj = -b'*y;
+pobj = C(:)'*X(:);
+out.dimacs.err1 = norm(diag(X)-b)/(1+norm(b));
+out.dimacs.err2 = max(-min(eig(X)),0)/(1+norm(b));
+out.dimacs.err3 = norm(diag(y)+Z-C,'fro')/(1+norm(C,'fro'));
+out.dimacs.err4 = max(-min(eig(Z)),0)/(1+norm(C,'fro'));
+out.dimacs.err5 = (pobj+dobj)/(1+abs(pobj)+abs(dobj));
+out.dimacs.err6 = (X(:)'*Z(:))/(1+abs(pobj)+abs(dobj));
 
 R = 10;
 [u,~] = eigs(X, R, 'LM');
@@ -84,7 +81,7 @@ out.primalObj = C(:)'*X(:);
 
 %% Save Results
 
-if ~exist(['results/MaxCut/',maxcut_data],'dir'), mkdir(['results/MaxCut/',maxcut_data]); end
-save(['results/MaxCut/',maxcut_data,'/SDPT3.mat'],'obj','info','runhist','out','-v7.3');
+if ~exist(['results/DualMaxCut/',maxcut_data],'dir'), mkdir(['results/DualMaxCut/',maxcut_data]); end
+save(['results/DualMaxCut/',maxcut_data,'/SDPT3.mat'],'obj','info','runhist','out','-v7.3');
 
 %% Last edit: Alp Yurtsever - July 24, 2020

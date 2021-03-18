@@ -1,3 +1,6 @@
+%% Test setup with hard instances for BM-splitting (MaxCut SDP)
+%% Alp Yurtsever (alp.yurtsever@epfl.ch - alpy@mit.edu)
+
 %% Choose data
 % NOTE: You need to download data from GSET and locate them to under the
 % "FilesMaxCut/data/G/" folder (resp. DIMACS10, "FilesMaxCut/data/DIMACS10/").
@@ -11,7 +14,6 @@ addpath solver;
 % Add manopt to path!
 
 % addpath(genpath('DESTINATION OF MANOPT'));
-addpath(genpath('./FilesMaxcut/manopt'));
 
 %% Load data
 

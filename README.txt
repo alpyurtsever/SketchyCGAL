@@ -4,13 +4,13 @@
         A.Yurtsever - J.A. Tropp - O. Fercoq - M. Udell - V. Cevher
 ---------------------------------------------------------------------------
 
-This toolbox includes the source code for the numerical experiments in 
-[YTFUC2019].
+This toolbox includes the source code for the numerical experiments in our
+paper.
 
 Please follow <https://github.com/alpyurtsever/SketchyCGAL> for the 
 updates. 
 
-Please contact "alp.yurtsever@epfl.ch" or "alpy@mit.edu" for your questions 
+Please contact "alpy@mit.edu" or "alp.yurtsever@epfl.ch" for your questions 
 and feedbacks.
 
 ---------------------------------------------------------------------------
@@ -26,6 +26,10 @@ INDEX
 "./FilesMaxcut/data/DIMACS10/"
 - Empty folders. You should download the datasets from GSET and DIMACS10 
   benchmark to run MaxCut experiments.
+
+"./FilesMaxcut/data/sedumi_modified/"
+- Empty folders. Make a copy of "sedumi.m" in this folder, rename it as 
+sedumi_modified.m, and comment out the lines 638-642.
 
 "./FilesMaxcut/data/WALDSPURGER/C1.mat"
 "./FilesMaxcut/data/WALDSPURGER/C2.mat"
@@ -99,10 +103,11 @@ INDEX
   implement the black-box oracles. mexSparseMult is used in nonnegativity 
   constraints.
 
+"./plotter/Figure11_MaxCut.m"
 "./plotter/Figure71_MaxCut.m"
-"./plotter/Figure72_MaxCut.m"
-"./plotter/Figure73_PhaseRetrieval.m"
-"./plotter/Figure75_QAP.m"
+"./plotter/Figure72_PhaseRetrieval.m"
+"./plotter/Figure74_QAP.m"
+"./plotter/FigureSM73_MaxCut.m"
 - These scripts generate the Figures in the paper. Before running these 
   scripts, you should run the associated experiments. These scripts only 
   plot the figures from the saved results of these experiments. 
@@ -115,8 +120,9 @@ INDEX
 - These files implements the MaxCut experiments that we used to produce 
   Figure 7.1.
 
-"./Test_MaxCut_CGAL_Figure72.m" 
-- This file implements the MaxCut experiment to produce Figure 7.2.
+"./Test_MaxCut_CGAL_Figure71.m" 
+"./Test_MaxCut_SDPT3_GroundTruth.m" 
+- This file implements the MaxCut experiment to produce Figure 7.1.
 
 "./Test_MaxCut_Waldspurger.m" 
 - This file implements the numerical demonstration of spurious solutions
@@ -134,6 +140,15 @@ INDEX
 
 "./Test_QAP.m" 
 - This file implements the QAP experiments.
+
+"./Test_MaxCut_CGAL_PD.m" 
+"./Test_MaxCut_Mosek_PD.m" 
+"./Test_MaxCut_SDPT3_PD.m" 
+"./Test_MaxCut_SDPNAL_PD.m" 
+"./Test_MaxCut_Sedumi_PD.m" 
+"./Test_MaxCut_CGAL_FigureSM71_PD.m" 
+- These files implement the MaxCut experiments for demonstrating the 
+primal-dual convergence.
 
 "./COPYRIGHT.txt" 
 "./LICENSE.txt" 
@@ -173,12 +188,13 @@ Visit "http://www.mosek.com/" to download MOSEK.
 
 CITATION
 
-If you find this toolbox useful in your research, please cite our work:
+If you find this toolbox useful in your research, please cite our paper.
 
-[YTFUC2019] A.Yurtsever, J.A. Tropp, O. Fercoq, M. Udell, V. Cevher
-"Scalable Semidefinite Programming", 2019.
+Yurtsever, A., Tropp, J. A., Fercoq, O., Udell, M., Cevher, V., 
+Scalable Semidefinite Programming, 
+SIAM Journal on Mathematics of Data Science, 3(1):171-200, 2021
 
 ---------------------------------------------------------------------------
 ---------------------------------------------------------------------------
 
-Last edit: Alp Yurtsever - December 06, 2019
+Last edit: Alp Yurtsever - November 25, 2020

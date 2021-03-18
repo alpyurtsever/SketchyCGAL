@@ -1,4 +1,4 @@
-%%  Test setup for MaxCut SDP - Solved with SDPT3
+%% Test setup for Primal Dual Convergence (MaxCut SDP) - Solved with SDPNAL+
 %% Alp Yurtsever (alp.yurtsever@epfl.ch - alpy@mit.edu)
 
 %% Choose data
@@ -6,15 +6,15 @@
 % "FilesMaxCut/data/G/" folder (resp. DIMACS10, "FilesMaxCut/data/DIMACS10/").
 
 % maxcut_data = 'G/G1'; % you can choose other data files as well
-% maxcut_data = 'DIMACS10/belgium_osm';
+% maxcut_data = 'DIMACS10/delaunay_n10';
 
 %% Preamble
 rng(0,'twister');
 
-% Add SDPT3 to path!
-% NOTE: You need to download SDPT3 if you don't already have it.
+% Add SDPNAL+ to path!
+% NOTE: You need to download SDPNAL+ if you don't already have it.
 
-% addpath(genpath('DESTINATION OF SDPT3'));
+% addpath(genpath('DESTINATION OF SDPNAL+'));
 
 %% load data
 
@@ -27,7 +27,7 @@ C{1} = 0.5*(C{1}+C{1}');
 C{1} = -0.25*C{1};
 b = ones(n,1);
 
-%% Construct SDPT3 Problem
+%% Construct SDPNAL+ Problem
 
 blk{1,1} = 's';
 blk{1,2} = n;
@@ -36,21 +36,14 @@ for k = 1:n; A{k} = sparse(k,k,1,n,n); end
 Avec = svec(blk,A,ones(size(blk,1),1));
 clearvars A;
 
-OPTIONS.gaptol = 0.1;
+OPTIONS.maxtime = 7*24*60*60;
+OPTIONS.tol = 1e-3;
 
-%% Start memory logging
-% NOTE: This works only on Unix systems. 
-
-hmL = memLog([mfilename,'_',maxcut_data]);
-hmL.start;
-MEMBEGIN = hmL.prompt;
-
-%% Solve with SDPT3
-
+%% Solve with SDPNAL+
 timer = tic;
 cputimeBegin = cputime;
 
-[obj,X,y,~,info,runhist] = sdpt3(blk,Avec,C,b,OPTIONS);
+[obj,X,~,y,Z,~,~,~,info,runhist] = sdpnalplus(blk,Avec,C,b,[],[],[],[],[],OPTIONS);
 
 cputimeEnd = cputime;
 totalTime = toc(timer);
@@ -58,18 +51,22 @@ totalTime = toc(timer);
 out.totalTime = totalTime;
 out.totalCpuTime = cputimeEnd - cputimeBegin;
 
-%% Stop memory logging
-
-MEMEND = hmL.prompt;
-hmL.stop;
-out.memory = (MEMEND - MEMBEGIN)/1000; %in MB
-
 %% Evaluate errors
 
 X = cell2mat(X);
+Z = cell2mat(Z);
 C = cell2mat(C);
 
-R = 10;
+dobj = -b'*y;
+pobj = C(:)'*X(:);
+out.dimacs.err1 = norm(diag(X)-b)/(1+norm(b));
+out.dimacs.err2 = max(-min(eig(X)),0)/(1+norm(b));
+out.dimacs.err3 = norm(diag(y)+Z-C,'fro')/(1+norm(C,'fro'));
+out.dimacs.err4 = max(-min(eig(Z)),0)/(1+norm(C,'fro'));
+out.dimacs.err5 = (pobj+dobj)/(1+abs(pobj)+abs(dobj));
+out.dimacs.err6 = (X(:)'*Z(:))/(1+abs(pobj)+abs(dobj));
+
+R = 10; 
 [u,~] = eigs(X, R, 'LM');
 cutvalue = 0;
 for t = 1:R
@@ -79,12 +76,12 @@ for t = 1:R
 end
 
 out.cutvalue = cutvalue;
-out.primalFeas = norm(diag(X)-b)/(1+norm(b));
+out.primalFeas = norm(diag(X)-b)/max(1+norm(b));
 out.primalObj = C(:)'*X(:);
 
 %% Save Results
 
-if ~exist(['results/MaxCut/',maxcut_data],'dir'), mkdir(['results/MaxCut/',maxcut_data]); end
-save(['results/MaxCut/',maxcut_data,'/SDPT3.mat'],'obj','info','runhist','out','-v7.3');
+if ~exist(['results/DualMaxCut/',maxcut_data],'dir'), mkdir(['results/DualMaxCut/',maxcut_data]); end
+save(['results/DualMaxCut/',maxcut_data,'/SDPNAL.mat'],'obj','info','runhist','out','-v7.3');
 
-%% Last edit: Alp Yurtsever - July 24, 2020
+%% Last edit: Alp Yurtsever - June 24, 2020

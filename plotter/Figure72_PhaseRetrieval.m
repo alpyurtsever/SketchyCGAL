@@ -1,4 +1,4 @@
-%% Script used to generate Figure 7.3 
+%% Script used to generate Figure 7.2
 % Before running this, you should run the PhaseRetrieval experiment with  
 % all methods for all problem sizes (and Monte Carlo iterations). This 
 % script only generates the figure from the saved results of these 
@@ -17,8 +17,8 @@ ptr = 0;
 for n = nSweep
     ptr = ptr + 1;
     for MC = 1:20
-        if exist(['../results/PhaseRetrieval/10/',num2str(n),'_',num2str(MC),'_CGAL.mat'],'file')
-            data = load(['../results/PhaseRetrieval/10/',num2str(n),'_',num2str(MC),'_CGAL.mat']);
+        if exist(['../results/PhaseRetrieval/12/',num2str(n),'_',num2str(MC),'_CGAL.mat'],'file')
+            data = load(['../results/PhaseRetrieval/12/',num2str(n),'_',num2str(MC),'_CGAL.mat']);
             CGAL.time(ptr,MC) = data.out.totalTime;
             CGAL.mem(ptr,MC) = data.out.memory;
             CGAL.cputime(ptr,MC) = data.out.totalCpuTime;
@@ -38,8 +38,8 @@ ptr = 0;
 for n = nSweep
     ptr = ptr + 1;
     for MC = 1:20
-        if exist(['../results/PhaseRetrieval/10/',num2str(n),'_',num2str(MC),'_ThinCGAL.mat'],'file')
-            data = load(['../results/PhaseRetrieval/10/',num2str(n),'_',num2str(MC),'_ThinCGAL.mat']);
+        if exist(['../results/PhaseRetrieval/12/',num2str(n),'_',num2str(MC),'_ThinCGAL.mat'],'file')
+            data = load(['../results/PhaseRetrieval/12/',num2str(n),'_',num2str(MC),'_ThinCGAL.mat']);
             ThinCGAL.time(ptr,MC) = data.out.totalTime;
             ThinCGAL.mem(ptr,MC) = data.out.memory;
             ThinCGAL.cputime(ptr,MC) = data.out.totalCpuTime;
@@ -59,8 +59,8 @@ ptr = 0;
 for n = nSweep
     ptr = ptr + 1;
     for MC = 1:20
-        if exist(['../results/PhaseRetrieval/10/',num2str(n),'_',num2str(MC),'_SketchyCGAL.mat'],'file')
-            data = load(['../results/PhaseRetrieval/10/',num2str(n),'_',num2str(MC),'_SketchyCGAL.mat']);
+        if exist(['../results/PhaseRetrieval/12/',num2str(n),'_',num2str(MC),'_SketchyCGAL.mat'],'file')
+            data = load(['../results/PhaseRetrieval/12/',num2str(n),'_',num2str(MC),'_SketchyCGAL.mat']);
             SketchyCGAL.time(ptr,MC) = data.out.totalTime;
             SketchyCGAL.mem(ptr,MC) = data.out.memory;
             SketchyCGAL.cputime(ptr,MC) = data.out.totalCpuTime;
@@ -128,27 +128,27 @@ ylabel('storage','Interpreter','latex','FontSize',16);
 xlabel('problem size: $n$','Interpreter','latex','FontSize',16);
 
 %%
-SketchyCGAL.mean.cputime = mean(SketchyCGAL.cputime,2,'omitnan');
-CGAL.mean.cputime = mean(CGAL.cputime,2,'omitnan');
-ThinCGAL.mean.cputime = mean(ThinCGAL.cputime,2,'omitnan');
+SketchyCGAL.mean.time = mean(SketchyCGAL.time,2,'omitnan');
+CGAL.mean.time = mean(CGAL.time,2,'omitnan');
+ThinCGAL.mean.time = mean(ThinCGAL.time,2,'omitnan');
 
-SketchyCGAL.min.cputime = SketchyCGAL.mean.cputime - min(SketchyCGAL.cputime,[],2,'omitnan');
-CGAL.min.cputime = CGAL.mean.cputime - min(CGAL.cputime,[],2,'omitnan');
-ThinCGAL.min.cputime = ThinCGAL.mean.cputime - min(ThinCGAL.cputime,[],2,'omitnan');
-SketchyCGAL.max.cputime = max(SketchyCGAL.cputime,[],2,'omitnan') - SketchyCGAL.mean.cputime;
-CGAL.max.cputime = max(CGAL.cputime,[],2,'omitnan') - CGAL.mean.cputime;
-ThinCGAL.max.cputime = max(ThinCGAL.cputime,[],2,'omitnan') - ThinCGAL.mean.cputime;
+SketchyCGAL.min.time = SketchyCGAL.mean.time - min(SketchyCGAL.time,[],2,'omitnan');
+CGAL.min.time = CGAL.mean.time - min(CGAL.time,[],2,'omitnan');
+ThinCGAL.min.time = ThinCGAL.mean.time - min(ThinCGAL.time,[],2,'omitnan');
+SketchyCGAL.max.time = max(SketchyCGAL.time,[],2,'omitnan') - SketchyCGAL.mean.time;
+CGAL.max.time = max(CGAL.time,[],2,'omitnan') - CGAL.mean.time;
+ThinCGAL.max.time = max(ThinCGAL.time,[],2,'omitnan') - ThinCGAL.mean.time;
 
 hfig2 = figure('Position',[100,100,500,300]);
 set(hfig2,'name','PhaseRetrieval-TimeVsSize','numbertitle','off');
 
-YY = [CGAL.mean.cputime, ThinCGAL.mean.cputime, SketchyCGAL.mean.cputime];
+YY = [CGAL.mean.time, ThinCGAL.mean.time, SketchyCGAL.mean.time];
 bar(YY,'grouped');
 hold on
-errorbar((1:5)-0.225,CGAL.mean.cputime,CGAL.min.cputime,CGAL.max.cputime,'LineWidth',1.5,'LineStyle','none','Color','black');
+errorbar((1:5)-0.225,CGAL.mean.time,CGAL.min.time,CGAL.max.time,'LineWidth',1.5,'LineStyle','none','Color','black');
 hold on
-errorbar((1:5),ThinCGAL.mean.cputime,ThinCGAL.min.cputime,ThinCGAL.max.cputime,'LineWidth',1.5,'LineStyle','none','Color','black');
-errorbar((1:5)+0.225,SketchyCGAL.mean.cputime,SketchyCGAL.min.cputime,SketchyCGAL.max.cputime,'LineWidth',1.5,'LineStyle','none','Color','black');
+errorbar((1:5),ThinCGAL.mean.time,ThinCGAL.min.time,ThinCGAL.max.time,'LineWidth',1.5,'LineStyle','none','Color','black');
+errorbar((1:5)+0.225,SketchyCGAL.mean.time,SketchyCGAL.min.time,SketchyCGAL.max.time,'LineWidth',1.5,'LineStyle','none','Color','black');
 
 ax = gca;
 ax.YScale = 'log';
@@ -170,7 +170,7 @@ ax.XRuler.MinorTick = 'off';
 set(gca,'TickDir','out')
 set(gca,'LineWidth',1,'TickLength',[0.02 0.02]);
 
-ylabel('cpu time (sec)','Interpreter','latex','FontSize',16);
+ylabel('time (sec)','Interpreter','latex','FontSize',16);
 xlabel('problem size: $n$','Interpreter','latex','FontSize',16);
 
-%% Last edit: Alp Yurtsever - December 2, 2019
+%% Last edit: Alp Yurtsever - July 24, 2020

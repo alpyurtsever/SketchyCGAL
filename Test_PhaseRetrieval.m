@@ -5,7 +5,7 @@
 % random problem instances (create random data) by running "CreateData.m"
 % in "FilesPhaseRetrieval" folder. 
 
-L = 10;
+L = 12;
 METHOD = 'SketchyCGAL';
 n = 1000;
 MC = 1;
@@ -153,4 +153,4 @@ out = sum(Atop,2);
 
 end
 
-%% Last edit: Alp Yurtsever - November 18, 2019
+%% Last edit: Alp Yurtsever - July 24, 2019

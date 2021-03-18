@@ -1,4 +1,4 @@
-%% Script used to generate Figure 7.5
+%% Script used to generate Figure 7.4
 % Before running this, you should run the QAP experiments with all
 % datasets. This script only generates the figure from the saved results 
 % of these  experiments.
@@ -128,9 +128,9 @@ Y = [Gap.CGAL, min([Gap.CSDP2, Gap.CSDP3, Gap.CSDP4],[],2), Gap.PATH];
 bar(Y,'grouped');
 ax1 = gca;
 ax1.XTick = 1:size(QAPLIB,1);
-ax1.YTick = 0:100:1000;
 set(ax1,'xticklabel',QAPLIB(:,1))
 ylabel('relative gap \%','interpreter','latex','fontsize',13)
+ylim([0,100])
 
 ax1.TickLabelInterpreter = 'latex';
 ax1.FontSize = 11;
@@ -140,8 +140,22 @@ set(gca,'LineWidth',0.5,'TickLength',[0 0]);
 hl = legend({'SketchyCGAL','CSDP','PATH'});
 hl.Interpreter = 'latex';
 hl.FontSize = 12;
+hl.Position = [ 0.131    0.7558    0.1000    0.1650];
 
-
+a = (1:size(Y,1)).';
+x = [a-0.25 a a+0.25];
+for k=1:size(Y,1)
+for m = 1:size(Y,2)
+    if Y(k,m) > 100
+        text(x(k,m),100,num2str(Y(k,m),'~$%0.1f$'),...
+            'Rotation',90,...
+            'Interpreter','latex',...
+            'FontSize',7,...
+            'HorizontalAlignment','left',...
+            'VerticalAlignment','middle')
+    end
+end
+end
 %% TSP
 
 Optimals = cell2mat(TSPLIB(:,2));
@@ -170,7 +184,6 @@ Y = [Gap.CGAL, min([Gap.CSDP2, Gap.CSDP3, Gap.CSDP4],[],2), Gap.PATH];
 hb = bar(Y,'grouped');
 ax2 = gca;
 ax2.XTick = 1:size(TSPLIB,1);
-ax2.YTick = 0:100:1000;
 set(ax2,'xticklabel',TSPLIB(:,1))
 ax2.TickLabelInterpreter = 'latex';
 ax2.FontSize = 11;
@@ -178,7 +191,23 @@ xtickangle(45)
 set(ax2, 'YGrid', 'on', 'XGrid', 'off')
 set(gca,'LineWidth',0.5,'TickLength',[0 0]);
 ylabel('relative gap \%','interpreter','latex','fontsize',13)
+ylim([0,250])
 
 ax1.Position = ax2.Position;
 
-%% Last edit: Alp Yurtsever - December 2, 2019
+a = (1:size(Y,1)).';
+x = [a-0.25 a a+0.25];
+for k=1:size(Y,1)
+for m = 1:size(Y,2)
+    if Y(k,m) > 250
+        text(x(k,m),250,num2str(Y(k,m),'~$%0.1f$'),...
+            'Rotation',90,...
+            'Interpreter','latex',...
+            'FontSize',7,...
+            'HorizontalAlignment','left',...
+            'VerticalAlignment','middle')
+    end
+end
+end
+
+%% Last edit: Alp Yurtsever - July 24, 2020

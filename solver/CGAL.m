@@ -1,4 +1,4 @@
-function [ out, U, Delt ] = CGAL( n, Primitive1, Primitive2, Primitive3, a, b, R, T, beta0, K, varargin )
+function [ out, U, Delt, y, z, pobj ] = CGAL( n, Primitive1, Primitive2, Primitive3, a, b, R, T, beta0, K, varargin )
 %CGAL This function implements CGAL - SketchyCGAL - ThinCGAL for solving
 %semidefinite programs of the following form:
 %
@@ -6,8 +6,8 @@ function [ out, U, Delt ] = CGAL( n, Primitive1, Primitive2, Primitive3, a, b, R
 %                                 al <= tr(X) <= au
 %                                 bl_i <= <A_i,X> <= bu_i
 %
-% Coded by: Alp Yurtsever - alp.yurtsever@epfl.ch
-% Last modified: 19 November, 2019
+% Coded by: Alp Yurtsever - alp.yurtsever@epfl.ch - alpy@mit.edu
+% Last modified: 24 July, 2020
 
 narginchk(8,inf);
 if isempty(beta0), beta0 = 1; end
@@ -17,9 +17,11 @@ if isempty(K), K = inf; end
 WALLTIME = inf; % Default: Walltime is infinite
 STOPTOL = []; STOPCOND = []; % Default: No stopping condition
 FLAG_INCLUSION = ~isvector(b); % [true, false] = ['AX = b', 'b(:,1) <= AX <= b(:,2)]
-FLAG_LANCZOS = true; % [true, false] = [Lanczos Method, Power Method]
+FLAG_LANCZOS = 2; % [0,1,2] = [Power Method, Lanczos Method, Lanczos Method (storage optimal implementation)]
 FLAG_TRACECORRECTION = true; % optional trace correction step
+FLAG_CAREFULLSTOPPING = false; % if true, solves the eigenvalue problem to higher accuracy
 FLAG_METHOD = 1; % [0,1,2] = [CGAL, SketchyCGAL, ThinCGAL]
+FLAG_EVALSURROGATEGAP = false; % if true, evalautes stopObj and stopFeas even if here is no stopping rule (i.e., STOPTOL = 0)
 FLAG_MULTRANK_P1 = false;
 FLAG_MULTRANK_P3 = false;
 SKETCH_FIELD = 'real'; % 'real' or 'complex'
@@ -71,12 +73,18 @@ if ~isempty(varargin)
                 SKETCH_FIELD = varargin{tt+1};
             case 'tracecorrection'
                 FLAG_TRACECORRECTION = logical(varargin{tt+1});
+            case 'carefulstopping'
+                FLAG_CAREFULLSTOPPING = logical(varargin{tt+1});
+            case 'evalsurrogategap'
+                FLAG_EVALSURROGATEGAP = logical(varargin{tt+1});
             case 'lmo'
                 switch lower(varargin{tt+1})
                     case 'power'
-                        FLAG_LANCZOS = false;
+                        FLAG_LANCZOS = 0;
                     case 'lanczos'
-                        FLAG_LANCZOS = true;
+                        FLAG_LANCZOS = 1;
+                    case 'lanczosopt'
+                        FLAG_LANCZOS = 2;
                     otherwise
                         error('Unknown linear minimization oracle type.');
                 end
@@ -91,6 +99,9 @@ b_org = b;
 a_org = a;
 RESCALE_OBJ = 1;
 RESCALE_FEAS = 1;
+Primitive1_org = @(x) Primitive1(x);
+Primitive2_org = @(y,x) Primitive2(y,x);
+Primitive3_org = @(x) Primitive3(x);
 if any(SCALE_A ~= 1)
     b = b .* SCALE_A;
     Primitive3 = @(x) Primitive3(x) .* SCALE_A;
@@ -116,7 +127,6 @@ end
 % Create OUT stuct where we store optimization information
 [out, errNames, errNamesPrint, ptr] = createErrStructs();
 
-
 % Initialize the decision variable and the dual
 if FLAG_METHOD == 0
     X = zeros(n,n);
@@ -133,14 +143,18 @@ end
 z = zeros(size(b,1),1);
 y0 = zeros(size(b,1),1);
 y = y0;
-objective = 0;
+pobj = 0;
 
 % Choose the linear minimization oracle
-if FLAG_LANCZOS
-    ApproxMinEvec = @(x,t) ApproxMinEvecLanczos(x, n, ceil((t^0.25)*log(n))); % More practical (Almost-storage optimal but faster)
+if FLAG_LANCZOS == 2
+    ApproxMinEvec = @(x,t) ApproxMinEvecLanczosSE(x, n, ceil((t^0.25)*log(n))); % Lanczos storage optimal implementation (Storage optimal but requires 2 times more Matrix-vector multiplication)
+elseif FLAG_LANCZOS == 1
+    ApproxMinEvec = @(x,t) ApproxMinEvecLanczos(x, n, ceil((t^0.25)*log(n))); % Lanczos (Almost-storage optimal but arithmetically faster)
 else
-    ApproxMinEvec = @(x,t) ApproxMinEvecPower(x, n, ceil(8*(t^0.5)*log(n))); % Storage-optimal but slower
+    ApproxMinEvec = @(x,t) ApproxMinEvecPower(x, n, ceil(8*(t^0.5)*log(n))); % Power method (Storage-optimal but very slow)
 end
+
+
 
 cntTotal = 0; % Oracle counter for Primitive2
 
@@ -169,9 +183,7 @@ for t = 1:T
     
     if sig > 0, a_t = min(a); else, a_t = max(a); end
     u = sqrt(a_t)*u;
-    
-    TRACE = (1-eta)*TRACE + eta*a_t;
-    
+
     % Check stopping criteria
     if ~isempty(STOPTOL)
         if ~isempty(STOPCOND)
@@ -194,21 +206,47 @@ for t = 1:T
                 break;
             end
         else
-            FeasCond = norm(z - b);
-            ObjCond = objective + (y + beta.*(z-b))'*b + 0.5*beta*FeasCond^2 - eigsArg(u)'*u;
+            FeasOrg = norm((z - b) .* RESCALE_FEAS);
+            FeasCond = FeasOrg / max(norm(b_org),1); % norm(z - b);
+            AHk = Primitive3(u);
+            ObjCond = (pobj - Primitive1(u)'*u + y'*(b - AHk) + beta*(z-b)'*(z - AHk) - 0.5*beta*norm(z-b)^2)*RESCALE_OBJ / max(abs(pobj*RESCALE_OBJ),1);
             if FeasCond <= STOPTOL && ObjCond <= STOPTOL
-                if ~isempty(SAVEHIST), updateErrStructs(); printError(); clearErrStructs(); end
-                out.status = 'stopping criteria met';
-                break;
+                % We check the stopping criteria once again with higher
+                % accuracy, but we don't want to it very frequently... 
+                % So we implement a 'LastCheckpoint'. If we fail to satisfy
+                % stopping criterion, we do not check it again until we run
+                % 5 percent more iterations...
+                if FLAG_CAREFULLSTOPPING
+                    if ~exist('LastCheckpoint','var'), LastCheckpoint = t; end
+                    if t > 1.05*LastCheckpoint
+                        LastCheckpoint = t;
+                        [u,sig,cntInner] = ApproxMinEvec(eigsArg,max(t^2,ceil(1/STOPTOL^2)));
+                        cntTotal = cntTotal + cntInner;
+                        if sig > 0, a_t = min(a); else, a_t = max(a); end
+                        u = sqrt(a_t)*u;
+                        AHk = Primitive3(u);
+                        ObjCond = (pobj - Primitive1(u)'*u + y'*(b - AHk) + beta*(z-b)'*(z - AHk) - 0.5*beta*norm(z-b)^2)*RESCALE_OBJ / max(abs(pobj*RESCALE_OBJ),1);
+                        if ObjCond <= STOPTOL
+                            if ~isempty(SAVEHIST), updateErrStructs(); printError(); clearErrStructs(); end
+                            out.status = 'stopping criteria met (accurate)';
+                            break;
+                        end
+                    end
+                else
+                    if ~isempty(SAVEHIST), updateErrStructs(); printError(); clearErrStructs(); end
+                    out.status = 'stopping criteria met';
+                    break;
+                end
             end
         end
     end
     
     zEvec = Primitive3(u);
     z = (1-eta)*z + eta*zEvec;
+    TRACE = (1-eta)*TRACE + eta*a_t;
     
     objEvec = u'*Primitive1(u);
-    objective = (1-eta)*objective + eta*objEvec;
+    pobj = (1-eta)*pobj + eta*objEvec;
     
     if FLAG_METHOD == 0
         X = (1-eta)*X + eta*(u*u');
@@ -253,24 +291,30 @@ if t == T
 end
 
 if FLAG_METHOD == 0
-    U = X / SCALE_X;
+    U = X ./ SCALE_X;
     Delt = [];
 elseif FLAG_METHOD == 1
     if FLAG_TRACECORRECTION
         Delt = Delt + ((TRACE-trace(Delt))/R)*eye(size(Delt));
     end
-    Delt = Delt / SCALE_X;
+    Delt = Delt ./ SCALE_X;
 elseif FLAG_METHOD == 2
     U = UTHIN;
-    Delt = DTHIN / SCALE_X;
+    Delt = DTHIN ./ SCALE_X;
 end
-
+y = (SCALE_A.*y)./SCALE_C;
+z = z .* RESCALE_FEAS;
+pobj = pobj .* RESCALE_OBJ;
 
 %% Nested functions
     function [out, errNames, errNamesPrint, ptr] = createErrStructs()
-        if ~isempty(STOPTOL)
+        if ~isempty(STOPTOL) || FLAG_EVALSURROGATEGAP
             if ~isempty(STOPCOND)
                 out.info.stopCond = nan(numel(SAVEHIST),1);
+                if FLAG_EVALSURROGATEGAP
+                    out.info.stopObj = nan(numel(SAVEHIST),1);
+                    out.info.stopFeas = nan(numel(SAVEHIST),1);
+                end
             else
                 out.info.stopObj = nan(numel(SAVEHIST),1);
                 out.info.stopFeas = nan(numel(SAVEHIST),1);
@@ -314,9 +358,9 @@ end
         out.iteration(ptr,1) = t;
         out.time(ptr,1) = totTime;
         out.cputime(ptr,1) = totCpuTime;
-        out.info.primalObj(ptr,1) = objective * RESCALE_OBJ;
+        out.info.primalObj(ptr,1) = pobj * RESCALE_OBJ;
         if FLAG_INCLUSION, FEAS = norm((z - PROJBOX(z)) .* RESCALE_FEAS); % maybe / (norm(PROJBOX(z) .* RESCALE_FEAS) + 1); ?
-        else, FEAS = norm((z - b) .* RESCALE_FEAS) / max(norm(b_org),1);
+        else, FEAS = norm((z - b) .* RESCALE_FEAS) / (1 + norm(b_org));
         end
         out.info.primalFeas(ptr,1) = FEAS;
         out.info.cntTotal(ptr,1) = cntTotal;
@@ -331,7 +375,7 @@ end
                 AUU = Primitive3MultRank(U);
                 out.info.skPrimalFeas(ptr,1) = norm((AUU - PROJBOX(AUU)) .* RESCALE_FEAS); % maybe /  (norm(PROJBOX(AUU) .* RESCALE_FEAS) + 1); ?
             else
-                out.info.skPrimalFeas(ptr,1) = norm((Primitive3MultRank(U) - b) .* RESCALE_FEAS) / max(norm(b_org),1);
+                out.info.skPrimalFeas(ptr,1) = norm((Primitive3MultRank(U) - b) .* RESCALE_FEAS) / (1 + norm(b_org));
             end
                 %norm((Ax_b_sketch - projK(Ax_b_sketch)).*scaleFeas);
         elseif FLAG_METHOD == 0
@@ -347,18 +391,38 @@ end
         else
             error('Unknown FLAG_METHOD.');
         end
-        if ~isempty(STOPTOL)
+        z_org = z.*RESCALE_FEAS;
+        y_org = (SCALE_A.*y)./SCALE_C;
+        pobj_org = pobj*RESCALE_OBJ;
+        if ~isempty(STOPTOL) || FLAG_EVALSURROGATEGAP
             if ~isempty(STOPCOND)
-                out.info.stopCond(ptr,1) = STOPCOND(U / sqrt(SCALE_X)); %% alphaorg
+                switch nargin(STOPCOND)
+                    case 1, out.info.stopCond(ptr,1) = STOPCOND(U./sqrt(SCALE_X));
+                    case 2, out.info.stopCond(ptr,1) = STOPCOND(U./sqrt(SCALE_X),z_org);
+                    case 3, out.info.stopCond(ptr,1) = STOPCOND(U./sqrt(SCALE_X),z_org,pobj_org);
+                    case 4, out.info.stopCond(ptr,1) = STOPCOND(U./sqrt(SCALE_X),z_org,pobj_org,y_org);
+                    otherwise, error('stopCond should have 1 to 4 inputs.');
+                end
             else
+                if isempty(STOPTOL)
+                    FeasOrg = norm((z - b) .* RESCALE_FEAS);
+                    FeasCond = FeasOrg / max(norm(b_org),1); % norm(z - b);
+                    AHk = Primitive3(u);
+                    ObjCond = (pobj - Primitive1(u)'*u + y'*(b - AHk) + beta*(z-b)'*(z - AHk) - 0.5*beta*norm(z-b)^2)*RESCALE_OBJ / max(abs(pobj*RESCALE_OBJ),1);
+                end
                 out.info.stopObj(ptr,1) = ObjCond;
                 out.info.stopFeas(ptr,1) = FeasCond;
             end
         end
         for eIt = 1:2:length(ERR)
-            if nargin(ERR{eIt+1}) == 1
-                out.info.(ERR{eIt})(ptr,:) = ERR{eIt+1}(U / sqrt(SCALE_X)); %% alphaorg
-            end
+            switch nargin(ERR{eIt+1})
+                case 0, out.info.(ERR{eIt})(ptr,:) = ERR{eIt+1}();
+                case 1, out.info.(ERR{eIt})(ptr,:) = ERR{eIt+1}(U./sqrt(SCALE_X));
+                case 2, out.info.(ERR{eIt})(ptr,:) = ERR{eIt+1}(U./sqrt(SCALE_X),z_org);
+                case 3, out.info.(ERR{eIt})(ptr,:) = ERR{eIt+1}(U./sqrt(SCALE_X),z_org,pobj_org);
+                case 4, out.info.(ERR{eIt})(ptr,:) = ERR{eIt+1}(U./sqrt(SCALE_X),z_org,pobj_org,y_org);
+                otherwise, error('errFncs should have 0 to 4 inputs.');
+            end                
         end
     end
 
@@ -528,8 +592,93 @@ end
 B = diag(aleph(1:i), 0) + diag(beth(1:(i-1)), +1) + diag(beth(1:(i-1)), -1);
 
 [U, D] = cgal_eig(0.5*(B+B'));
-[xi, ind] = min(diag(D));
+[xi, ind] = min(D);
 v = Q(:, 1:i) * U(:, ind);
+
+% Next lines are unnecessary in general, but I observed numerical errors in
+% norm(v) at some experiments, so let's normalize it for robustness. 
+nv = norm(v);
+xi = xi*nv;
+v = v/nv;
+end
+
+%% Lanczos method storage efficeint implementation
+function [v, xi, i] = ApproxMinEvecLanczosSE(M, n, q)
+% Approximate minimum eigenvector
+% Vanilla Lanczos method
+
+q = min(q, n-1);                    % Iterations < dimension!
+
+if isnumeric(M), M = @(x) M*x; end
+
+aleph = zeros(q,1);                 % Diagonal Lanczos coefs
+beth = zeros(q,1);                  % Off-diagonal Lanczos coefs
+
+v = randn(n, 1);                   % First Lanczos vector is random
+v = v / norm(v);
+vi = v;
+
+% First loop is to find coefficients
+for i = 1 : q
+
+    vip1 = M ( vi );			% Apply M to previous Lanczos vector
+    aleph(i) = real(vi' * vip1);		% Compute diagonal coefficients
+    
+    if (i == 1)                     % Lanczos iteration
+        vip1 = vip1 - aleph(i) * vi;
+    else
+        vip1 = vip1 - aleph(i) * vi - beth(i-1) * vim1;
+    end
+    
+    beth(i) = norm( vip1 );            % Compute off-diagonal coefficients
+    
+    if ( abs(beth(i)) < sqrt(n)*eps ), break; end
+    
+    vip1 = vip1 / beth(i);        % Normalize
+    
+    vim1 = vi;  % update
+    vi = vip1;
+    
+end
+
+% i contains number of completed iterations
+B = diag(aleph(1:i), 0) + diag(beth(1:(i-1)), +1) + diag(beth(1:(i-1)), -1);
+[U, D] = cgal_eig(0.5*(B+B'));
+[xi, ind] = min(D);
+Uind1 = U(:,ind);
+
+% Second loop is to find compute the vector (on the fly)
+aleph = zeros(q,1);                 % Diagonal Lanczos coefs
+beth = zeros(q,1);                  % Off-diagonal Lanczos coefs
+vi = v;
+v = zeros(n,1);
+for i = 1 : length(Uind1)
+
+    v = v + vi*Uind1(i);
+
+    vip1 = M ( vi );                 % Apply M to previous Lanczos vector
+    aleph(i) = real(vi' * vip1);		% Compute diagonal coefficients
+    
+    if (i == 1)                     % Lanczos iteration
+        vip1 = vip1 - aleph(i) * vi;
+    else
+        vip1 = vip1 - aleph(i) * vi - beth(i-1) * vim1;
+    end
+    
+    beth(i) = norm( vip1 );    % Compute off-diagonal coefficients
+    
+    % if ( abs(beth(i)) < sqrt(n)*eps ), break; end
+    
+    % if i >= numit, warning('numerical error in Lanczos'); break; end
+    
+    vip1 = vip1 / beth(i);          % Normalize
+    
+    vim1 = vi;  % update
+    vi = vip1;
+        
+end
+
+i = 2*i; % we looped twice
 
 % Next lines are unnecessary in general, but I observed numerical errors in
 % norm(v) at some experiments, so let's normalize it for robustness. 
@@ -544,13 +693,12 @@ function [V,D] = cgal_eig(X)
 % This function replaces eig with a SVD based solver, in case eig does not
 % converge. 
 try
-    [V,D]       = eig(X);
+    [V,D]       = eig(X,'vector');
 catch 
 	warning('eig did not work. Using the svd based replacement instead.');
     [V,D,W]     = svd(X);
-    d           = diag(D).' .* sign(real(dot(V,W,1)));
-    [d,ind]     = sort(d);
-    D           = diag(d);
+    D           = diag(D).' .* sign(real(dot(V,W,1)));
+    [D,ind]     = sort(D);
     V           = V(:,ind);
 end
 end
@@ -593,3 +741,19 @@ U = [U1, P]*u2;
 S = s2;
 
 end
+
+%% Last edit: Alp Yurtsever - July 24, 2020
+% ChangeLog:
+% + November 19, 2019 
+%   - first public version
+% + July 24, 2020
+%   - dual variable y, measrements z=AX, and the objective pobj=<C,X> are
+%   added to the outputs.
+%   - reformulated "ObjCond" and "FeasCond" so that they check convergence
+%   after postscaling
+%   - [optional] [experimental] if "FLAG_CAREFULLSTOPPING=1", then CGAL 
+%   solves the eigenvalue problem to higher accuracy when checking stopping
+%   - changed input of user input error functions from "U" to "U,z,pobj,y"
+%   - new eigenvalue solver "ApproxMinEvecLanczosSE" added and set default.
+%   This solver is a storage-optimal implementation of Lanczos solver.
+%   Doubles the total cost but reduces the storage cost.  

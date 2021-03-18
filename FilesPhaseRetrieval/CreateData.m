@@ -3,7 +3,7 @@
 
 rng(0,'twister');
 
-L = 10; % we get 10*n measurements
+L = 12; % we get 12*n measurements
 
 for n = [1e2,1e3,1e4,1e5,1e6]
     for MC = 1:20
@@ -47,4 +47,4 @@ out = Ax(:);
 
 end
 
-%% Last edit: Alp Yurtsever - November 18, 2019
+%% Last edit: Alp Yurtsever - July 24, 2020

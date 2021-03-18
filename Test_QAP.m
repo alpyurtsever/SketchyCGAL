@@ -312,7 +312,7 @@ out = CGAL( n, Primitive1, Primitive2, Primitive3, a, b, R, maxit, beta0, K, ...
     'SCALE_C',SCALE_C,...
     'SCALE_X',SCALE_X,...
     'errfncs',err,... % err defines the spectral rounding for maxcut
-    'walltime',2*24*60*60); % algorithm stops after at most 2 days
+    'walltime',3*24*60*60); % algorithm stops after at most 3 days
 
 totalTime = toc(timer);
 cputimeEnd = cputime;
@@ -356,4 +356,4 @@ for t=1:size(x,2)
 end
 end
 
-%% Last edit: Alp Yurtsever - November 18, 2019
+%% Last edit: Alp Yurtsever - July 24, 2020
