@@ -131,7 +131,7 @@ sedumi_modified.m, and comment out the lines 638-642.
 
 "./Test_PhaseRetrieval.m" 
 - This file implements the abstract Phase Retrieval experiments to produce 
-  Figure 7.3. You shuold run this file for all problem dimensions n, with 
+  Figure 7.3. You should run this file for all problem dimensions n, with 
   all methods, and from MC = 1 to 20, for 20 Monte-Carlo trials. 
 
 "./Test_Ptychography.m" 
